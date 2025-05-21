@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Katzen-Klicker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fef6e4;
+      text-align: center;
+      padding: 20px;
+    }
+    #cat {
+      width: 200px;
+      cursor: pointer;
+      max-width: 100%;
+    }
+    .info, .upgrade, .shop {
+      font-size: 18px;
+      margin-top: 10px;
+    }
+    .bar-container {
+      width: 80%;
+      margin: 10px auto;
+      background-color: #ddd;
+      height: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background-color: #ffb703;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .button {
+      margin: 5px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 10px;
+      background-color: #90e0ef;
+      cursor: pointer;
+    }
+    .button:hover {
+      background-color: #00b4d8;
+      color: white;
+    }
+    select, input {
+      padding: 5px;
+    }
+    #achievements, #leaderboard {
+      margin-top: 20px;
+      text-align: left;
+      display: inline-block;
+      background: #fff3;
+      padding: 10px;
+      border-radius: 10px;
+    }
+    @media screen and (max-width: 600px) {
+      .info, .upgrade, .shop {
+        font-size: 16px;
+      }
+      .button {
+        padding: 8px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>🐱 Katzen-Klicker</h1>
+
+  <div id="loginContainer">
+    <p>🔐 Bitte gib deinen Namen ein:</p>
+    <input id="usernameInput" placeholder="Benutzername">
+    <button class="button" onclick="startGame()">Start</button>
+  </div>
+
+  <div id="gameContainer" style="display:none">
+    <h2>Willkommen, <span id="playerName"></span>!</h2>
+    <img id="cat" src="https://cdn.pixabay.com/photo/2017/01/31/13/14/cat-2022346_1280.png" alt="Katze" />
+
+    <div class="info">💰 Münzen: <span id="coins">0</span></div>
+    <div class="info">⬆️ Level: <span id="level">1</span></div>
+    <div class="info">⚡ XP: <span id="xp">0</span> / <span id="xpNeeded">10</span></div>
+    <div class="bar-container">
+      <div id="xpBar" class="bar-fill"></div>
+    </div>
+
+    <div class="upgrade">
+      <button class="button" onclick="buyUpgrade()">Upgrade (+1 Münze pro Klick)<br>Kosten: <span id="upgradeCost">10</span></button>
+    </div>
+
+    <div class="upgrade">
+      <button class="button" onclick="buyAutoClick()">Auto-Clicker (+1 Münze/Sek)<br>Kosten: <span id="autoClickCost">100</span></button>
+    </div>
+
+    <div class="shop">
+      <h3>🎨 Skins-Shop</h3>
+      <select id="skinSelect" onchange="changeSkin()">
+        <option value="https://cdn.pixabay.com/photo/2017/01/31/13/14/cat-2022346_1280.png">Standard</option>
+        <option value="https://cdn.pixabay.com/photo/2021/03/18/16/39/cat-6105770_1280.jpg">Schlafende Katze</option>
+        <option value="https://cdn.pixabay.com/photo/2017/11/09/21/41/cat-2934720_1280.jpg">Grimmige Katze</option>
+        <option value="https://cdn.pixabay.com/photo/2020/03/30/07/14/cat-4983433_1280.jpg">Langhaar-Katze</option>
+      </select>
+    </div>
+
+    <div class="upgrade">
+      <button class="button" onclick="resetProgress()">🔁 Spiel zurücksetzen</button>
+    </div>
+
+    <div id="achievements">
+      <h3>🏆 Erfolge</h3>
+      <ul id="achievementList"></ul>
+    </div>
+
+    <div id="leaderboard">
+      <h3>📊 Rangliste</h3>
+      <ol id="rankingList">
+        <li>KatzeKönig – 9999 Münzen</li>
+        <li>Miaumaster – 8500 Münzen</li>
+        <li>WhiskersPro – 7000 Münzen</li>
+      </ol>
+    </div>
+
+    <div class="upgrade">
+      <button class="button" onclick="claimDailyReward()">🎁 Tägliche Belohnung abholen</button>
+    </div>
+  </div>
+
+  <audio id="clickSound" src="https://freesound.org/data/previews/256/256113_3263906-lq.mp3"></audio>
+
+  <script>
+    let coins = 0;
+    let coinsPerClick = 1;
+    let xp = 0;
+    let level = 1;
+    let xpNeeded = 10;
+    let upgradeCost = 10;
+    let autoClicker = 0;
+    let autoClickCost = 100;
+    let username = "";
+    let lastDailyClaim = localStorage.getItem("lastDailyClaim") || 0;
+
+    const cat = document.getElementById("cat");
+    const coinsEl = document.getElementById("coins");
+    const levelEl = document.getElementById("level");
+    const xpEl = document.getElementById("xp");
+    const xpNeededEl = document.getElementById("xpNeeded");
+    const xpBar = document.getElementById("xpBar");
+    const upgradeCostEl = document.getElementById("upgradeCost");
+    const autoClickCostEl = document.getElementById("autoClickCost");
+    const clickSound = document.getElementById("clickSound");
+    const achievementList = document.getElementById("achievementList");
+
+    const loginContainer = document.getElementById("loginContainer");
+    const gameContainer = document.getElementById("gameContainer");
+    const playerNameEl = document.getElementById("playerName");
+
+    function startGame() {
+      const input = document.getElementById("usernameInput");
+      username = input.value.trim();
+      if (!username) return alert("Bitte gib einen Benutzernamen ein.");
+      playerNameEl.textContent = username;
+      loginContainer.style.display = "none";
+      gameContainer.style.display = "block";
+      loadProgress();
+      updateDisplay();
+    }
+
+    function saveProgress() {
+      localStorage.setItem(username + '_data', JSON.stringify({ coins, coinsPerClick, xp, level, xpNeeded, upgradeCost, autoClicker }));
+    }
+
+    function loadProgress() {
+      const saved = localStorage.getItem(username + '_data');
+      if (saved) {
+        const data = JSON.parse(saved);
+        coins = data.coins;
+        coinsPerClick = data.coinsPerClick;
+        xp = data.xp;
+        level = data.level;
+        xpNeeded = data.xpNeeded;
+        upgradeCost = data.upgradeCost;
+        autoClicker = data.autoClicker;
+      }
+    }
+
+    function resetProgress() {
+      if (confirm("Willst du wirklich dein Spiel zurücksetzen?")) {
+        localStorage.removeItem(username + '_data');
+        location.reload();
+      }
+    }
+
+    cat.addEventListener("click", () => {
+      coins += coinsPerClick;
+      xp++;
+      clickSound.currentTime = 0;
+      clickSound.play();
+      checkLevelUp();
+      checkAchievements();
+      updateDisplay();
+      saveProgress();
+    });
+
+    function buyUpgrade() {
+      if (coins >= upgradeCost) {
+        coins -= upgradeCost;
+        coinsPerClick++;
+        upgradeCost = Math.floor(upgradeCost * 1.5);
+        updateDisplay();
+        saveProgress();
+      }
+    }
+
+    function buyAutoClick() {
+      if (coins >= autoClickCost) {
+        coins -= autoClickCost;
+        autoClicker++;
+        autoClickCost = Math.floor(autoClickCost * 2);
+        updateDisplay();
+        saveProgress();
+      }
+    }
+
+    function autoCollect() {
+      coins += autoClicker;
+      updateDisplay();
+      saveProgress();
+    }
+
+    function updateDisplay() {
+      coinsEl.textContent = coins;
+      levelEl.textContent = level;
+      xpEl.textContent = xp;
+      xpNeededEl.textContent = xpNeeded;
+      upgradeCostEl.textContent = upgradeCost;
+      autoClickCostEl.textContent = autoClickCost;
+      xpBar.style.width = Math.min(100, xp / xpNeeded * 100) + "%";
+    }
+
+    function checkLevelUp() {
+      while (xp >= xpNeeded && level < 50) {
+        xp -= xpNeeded;
+        level++;
+        xpNeeded = Math.floor(xpNeeded * 1.3);
+        coinsPerClick++;
+      }
+    }
+
+    function changeSkin() {
+      const skin = document.getElementById("skinSelect").value;
+      cat.src = skin;
+    }
+
+    function checkAchievements() {
+      // Beispiel-Erfolge
+      const unlocked = [];
+      if (coins >= 100) unlocked.push("💸 100 Münzen gesammelt!");
+      if (level >= 10) unlocked.push("🏅 Level 10 erreicht!");
+      if (coinsPerClick >= 10) unlocked.push("👆 10 Münzen pro Klick!");
+      achievementList.innerHTML = "";
+      unlocked.forEach(text => {
+        const li = document.createElement("li");
+        li.textContent = text;
+        achievementList.appendChild(li);
+      });
+    }
+
+    function claimDailyReward() {
+      const now = new Date();
+      const last = new Date(parseInt(lastDailyClaim));
+      if (now.toDateString() !== last.toDateString()) {
+        coins += 100;
+        lastDailyClaim = Date.now();
+        localStorage.setItem("lastDailyClaim", lastDailyClaim);
+        alert("🎉 Du hast 100 Münzen als tägliche Belohnung erhalten!");
+        updateDisplay();
+      } else {
+        alert("❌ Du hast deine tägliche Belohnung heute schon abgeholt.");
+      }
+    }
+
+    setInterval(autoCollect, 1000);
+  </script>
+</body>
+</html>

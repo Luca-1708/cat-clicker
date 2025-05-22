@@ -283,6 +283,88 @@
     }
 
     setInterval(autoCollect, 1000);
+    <!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Katzen Clicker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background-color: #ffe9ec;
+    }
+    #cat {
+      width: 200px;
+      cursor: pointer;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+    }
+    #rankingList {
+      list-style: none;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🐾 Katzen Clicker 🐾</h1>
+  <img id="cat" src="https://placekitten.com/200/200" alt="Katze" onclick="clickCat()">
+  <p>💰 Münzen: <span id="coins">0</span></p>
+
+  <button onclick="saveHighscorePrompt()">Highscore speichern</button>
+  <button onclick="showLocalLeaderboard()">Leaderboard anzeigen</button>
+
+  <h2>🏆 Bestenliste</h2>
+  <ul id="rankingList"></ul>
+
+  <script>
+    // --- Spiel-Logik ---
+    let coins = parseInt(localStorage.getItem("coins")) || 0;
+    document.getElementById("coins").textContent = coins;
+
+    function clickCat() {
+      coins++;
+      document.getElementById("coins").textContent = coins;
+      localStorage.setItem("coins", coins);
+    }
+
+    // --- Lokales Leaderboard speichern ---
+    function saveLocalHighscore(name, score) {
+      let highscores = JSON.parse(localStorage.getItem("highscores")) || [];
+      highscores.push({ name, score });
+      highscores.sort((a, b) => b.score - a.score);
+      highscores = highscores.slice(0, 10);
+      localStorage.setItem("highscores", JSON.stringify(highscores));
+    }
+
+    function saveHighscorePrompt() {
+      const name = prompt("Dein Name:");
+      if (name) {
+        saveLocalHighscore(name, coins);
+        alert("Highscore gespeichert!");
+      }
+    }
+
+    // --- Lokales Leaderboard anzeigen ---
+    function showLocalLeaderboard() {
+      let highscores = JSON.parse(localStorage.getItem("highscores")) || [];
+      const list = document.getElementById("rankingList");
+      list.innerHTML = "";
+
+      highscores.forEach(entry => {
+        const li = document.createElement("li");
+        li.textContent = `${entry.name} – ${entry.score} Münzen`;
+        list.appendChild(li);
+      });
+    }
+  </script>
+</body>
+</html>
   </script>
 </body>
 </html>
